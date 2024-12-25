@@ -1,0 +1,52 @@
+@startuml
+!include <C4/C4_Container>
+
+Person(client, "Клиент")
+
+Container(apigw, "API GateWay", "Java")
+Container(mp, "Мобильное приложение", "Kotlin")
+
+System_Boundary(c1, "Регулировка температуры") {
+    Container(regulation, "Регулятор температуры", "Java", "Управляет регулировкой температуры")
+    ContainerDb(regulation_db, "Postgres", "Relational Database", "Хранение данных о настройках устройств")
+}
+
+System_Boundary(c2, "Мониторинг температуры") {
+    Container(temperature_monitoring, "Мониторинг температуры", "Java", "Публикует данные о температуре")
+    ContainerDb(temp_monitoring_db, "Postgres", "Relational Database", "Хранение данных о температуре")
+}
+
+System_Boundary(c3, "Управление устройствами") {
+    Container(device_management, "Управляет устройствами", "Java", "Изменяет состояние устройств")
+    ContainerDb(device_management_db, "Postgres", "Relational Database", "Хранение данных об устройствах")
+}
+
+System_Boundary(notification, "Уведомления") {
+  Container(notification_service, "Отправка push, email, sms", "java", "Позволяет отправлять уведомления")
+  ContainerDb(queue_db, "Message Queue", "Kafka", "Очередь для отправки сообщений")
+}
+
+System_Ext(device, "Устройство умного дома")
+
+Rel(client, mp, "Управление устройствами, получение данных, регистрация устройств", "HTTPS")
+
+Rel(mp, apigw, "Управление устройствами, получение данных, регистрация устройств", "HTTPS")
+
+Rel(apigw, temperature_monitoring, "Получение данных о темпертуре", "HTTPS")
+Rel(apigw, regulation, "Управление и добавление новго устройства", "HTTPS")
+
+Rel(queue_db, notification_service, "Очередь на отправку", "TCP")
+
+Rel(temperature_monitoring, temp_monitoring_db, "Изменение данных о температуре", "ODBC")
+Rel(temperature_monitoring, queue_db, "Отправка данных в очередь", "TPC")
+
+Rel(regulation, regulation_db, "Публикация данныех о температуре", "ODBC")
+Rel(regulation, device_management, "Команда управление устройствами", "HTTPS")
+Rel(regulation, queue_db, "Отправка данных в очередь", "TPC")
+
+Rel(device_management, device, "Изменение состояния устройства", "HTTPS")
+Rel(device_management, device_management_db, "Изменение данных об устройстве", "ODBC")
+
+Rel(notification, mp, "Отправка уведомлений", "HTTPS")
+
+@enduml
