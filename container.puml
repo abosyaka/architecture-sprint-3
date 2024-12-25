@@ -1,45 +1,52 @@
 @startuml
-left to right direction
+!include <C4/C4_Container>
 
-actor User as "Пользователь"
+Person(client, "Клиент")
 
-package "API Gateway" {
-  rectangle "API Gateway" as API_Gateway
+Container(apigw, "API GateWay", "Java")
+Container(mp, "Мобильное приложение", "Kotlin")
+
+System_Boundary(c1, "Регулировка температуры") {
+    Container(regulation, "Регулятор температуры", "Java", "Управляет регулировкой температуры")
+    ContainerDb(regulation_db, "Postgres", "Relational Database", "Хранение данных о настройках устройств")
 }
 
-package "Микросервисы" {
-  component TemperatureMonitoringService as TMS
-  component TemperatureRegulationService as TRS
-  component DeviceManagementService as DMS
-  component NotificationService as NS
+System_Boundary(c2, "Мониторинг температуры") {
+    Container(temperature_monitoring, "Мониторинг температуры", "Java", "Публикует данные о температуре")
+    ContainerDb(temp_monitoring_db, "Postgres", "Relational Database", "Хранение данных о температуре")
 }
 
-package "Базы данных" {
-  database TempMonitoringDB as TMDB
-  database TempRegulationDB as TRDB
-  database DeviceManagementDB as DMDB
-  database NotificationDB as NDB
+System_Boundary(c3, "Управление устройствами") {
+    Container(device_management, "Управляет устройствами", "Java", "Изменяет состояние устройств")
+    ContainerDb(device_management_db, "Postgres", "Relational Database", "Хранение данных об устройствах")
 }
 
-queue Kafka as "Кафка"
+System_Boundary(notification, "Уведомления") {
+  Container(notification_service, "Отправка push, email, sms", "java", "Позволяет отправлять уведомления")
+  ContainerDb(queue_db, "Message Queue", "Kafka", "Очередь для отправки сообщений")
+}
 
-User --> API_Gateway : "Запрос"
-API_Gateway --> TMS : "Запрос текущей температуры"
-TMS --> TMDB : "Чтение температуры"
-TMS --> "Кафка" : "Публикация данных о температуре"
+System_Ext(device, "Устройство умного дома")
 
-API_Gateway --> TRS : "Команды регулирования температуры"
-TRS --> TRDB : "Запись настроек"
-TRS --> DMS : "Команды управления устройствами"
+Rel(client, mp, "Управление устройствами, получение данных, регистрация устройств", "HTTPS")
 
-API_Gateway --> DMS : "Управление устройствами (вкл/выкл)"
-DMS --> DMDB : "Запись состояния устройства"
-DMS --> "Кафка" : "Публикация изменений состояния"
+Rel(mp, apigw, "Управление устройствами, получение данных, регистрация устройств", "HTTPS")
 
-TRS --> "Кафка" : "Публикация команд регулирования"
+Rel(apigw, temperature_monitoring, "Получение данных о темпертуре", "HTTPS")
+Rel(apigw, regulation, "Управление и добавление новго устройства", "HTTPS")
 
-"Кафка" --> NS : "События для уведомлений"
-NS --> NDB : "Запись уведомлений"
-NS --> User : "Отправка уведомлений"
+Rel(queue_db, notification_service, "Очередь на отправку", "TCP")
+
+Rel(temperature_monitoring, temp_monitoring_db, "Изменение данных о температуре", "ODBC")
+Rel(temperature_monitoring, queue_db, "Отправка данных в очередь", "TPC")
+
+Rel(regulation, regulation_db, "Публикация данныех о температуре", "ODBC")
+Rel(regulation, device_management, "Команда управление устройствами", "HTTPS")
+Rel(regulation, queue_db, "Отправка данных в очередь", "TPC")
+
+Rel(device_management, device, "Изменение состояния устройства", "HTTPS")
+Rel(device_management, device_management_db, "Изменение данных об устройстве", "ODBC")
+
+Rel(notification, mp, "Отправка уведомлений", "HTTPS")
 
 @enduml

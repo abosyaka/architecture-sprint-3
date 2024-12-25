@@ -1,25 +1,19 @@
 @startuml
-!define RECTANGLE class
+!include <C4/C4_Container>
 
-RECTANGLE System as "Монолит" {
-  RECTANGLE DeviceManagement as "Управление устройствами"
-  RECTANGLE TemperatureMonitoring as "Мониторинг температуры"
-  RECTANGLE TemperatureRegulation as "Регулирование температуры"
-  RECTANGLE UserInterface as "Пользовательский интерфейс"
+Person(client, "Клиент")
+Person(engineer, "Инженер")
+
+System_Boundary(c1, "Теплый дом") {
+    Container(web_app, "Монолитное приложение", "Java, k8s, Postgres", "Позволяет получать данные с датчиков и управлять температурой")
 }
 
-User --> UserInterface : "Удалённое управление температурой"
-UserInterface --> DeviceManagement : "Команды на управление температурой"
-UserInterface --> TemperatureMonitoring : "Запрос текущей температуры"
-TemperatureMonitoring --> DeviceManagement : "Данные о текущей температуре"
-TemperatureMonitoring --> TemperatureSensors : "Данные с датчиков"
+System_Ext(tmpdevice, "Система управления температурой")
+System_Ext(sensor, "Датчик температуры")
 
-DeviceManagement --> TemperatureRegulation : "Заданная температура"
-TemperatureRegulation --> DeviceManagement : "Регулировка температуры"
 
-rectangle TemperatureSensors as "Датчики температуры" {
-}
-
-TemperatureSensors --> TemperatureMonitoring : "Текущие данные о температуре"
-
+Rel(client, web_app, "Управление отоплением", "HTTPS")
+Rel(engineer, web_app, "Подключает устройство", "HTTPS")
+Rel(web_app, tmpdevice, "изменение температуры", "HTTPS")
+Rel(web_app, sensor, "Получение данных с датчика", "HTTPS")
 @enduml
